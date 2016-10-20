@@ -1,4 +1,4 @@
-# Terrafoundry
+# Terrafirm
 
 [Terraform Docs](https://www.terraform.io/docs/index.html)
 
@@ -10,6 +10,19 @@ I think this goes without saying, but do note that there are things specific to
 the environments I work in that this module adheres to. I am not saying this is
 best practice for your environments; all I am putting forth here is a wrapper
 and structure for you to look over and see/modify it to fit for your use if necessary.
+
+My implementation sticks to a relatively firm consistency across your whole 
+project/environment for the simple fact that I find it both easier to understand and 
+manage. Why manage one large statefile for your whole environment when you can break 
+it out by both both by environment and "module" you are working on? The less things 
+you touch at one time, the less you are likely to break these things.
+
+##### NOTE:
+When I say module in quotes or internal_module, I am referring to a 
+Terraform configuration for a specific product/thing you are creating. It should  
+be agnostic of environment so that you can plug variables into it in order to 
+maintain separate states for the environments and this module.
+Perhaps it would be better to use another name in the future.
 
 ### Terraform Wrapper
 To enforce my best practices within Terraform, I have written a Terraform wrapper
