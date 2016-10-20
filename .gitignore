@@ -1,0 +1,7 @@
+*~
+*.log
+*.terraform
+*test
+.aws
+.DS_STORE
+.tfstate

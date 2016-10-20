@@ -55,8 +55,8 @@ resource. The folder structure of an "external" module will look like this:
 
 The folder structure of an "internal" module will look similar to this:
 > internal_module
->> .terraform/* (This is a git ignored file, it contains module symlinks which 
-get created with Terraform get)
+>> .terraform/* (This is a git ignored file, it contains module symlinks, etc. 
+which get created with Terraform get)
 
 >> internal_module.tf
 
