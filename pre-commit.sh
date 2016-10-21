@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Validate the Terraform configuration of each module.
-internal_modules=`ls modules/internal/`
+# Validate the Terraform configurations
+configs=`ls configs`
 
-for module in $internal_modules; do
-	terraform validate modules/internal/$module
+for config in $configs; do
+	terraform validate configs/$module
 	check_validate_exit=`echo $?`
   if [ "${check_validate_exit}" -ne 0 ]; then
-	  echo "There is an issue validating the ${module} module with 'terraform validate'. Fix the errors displayed above in '$(pwd)/modules/internal/${module}' before committing."
+	  echo "There is an issue validating the ${config} configuration with 'terraform validate'. Fix the errors displayed above in '$(pwd)/configs/${config}' before committing."
 	  exit 1
 	fi
 done
