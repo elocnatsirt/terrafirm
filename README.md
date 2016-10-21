@@ -11,10 +11,10 @@ the environments I work in that this module adheres to. I am not saying this is
 best practice for your environments; all I am putting forth here is a wrapper
 and structure for you to look over and see/modify it to fit for your use if necessary.
 
-My implementation sticks to a relatively firm consistency across your whole 
-project/environment for the simple fact that I find it both easier to understand and 
-manage. Why manage one large statefile for your whole environment when you can break 
-it out by both both by environment and "module" you are working on? The less things 
+My implementation sticks to a relatively firm consistency across your whole
+project/environment for the simple fact that I find it both easier to understand and
+manage. Why manage one large statefile for your whole environment when you can break
+it out by both both by environment and "module" you are working on? The less things
 you touch at one time, the less you are likely to break these things.
 
 ### Terraform Wrapper
