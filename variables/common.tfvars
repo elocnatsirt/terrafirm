@@ -22,7 +22,7 @@ variable "common" {
   }
 }
 
-variable "internal_module" {
+variable "config" {
   type    = "map"
   default = {
     module_specific_variable = "common_example"

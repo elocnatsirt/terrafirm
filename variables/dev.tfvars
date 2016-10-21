@@ -2,6 +2,6 @@ common = {
   example_variable = "dev_example"
 }
 
-internal_module = {
+config = {
   module_specific_variable = "dev_example"
 }

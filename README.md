@@ -17,13 +17,6 @@ manage. Why manage one large statefile for your whole environment when you can b
 it out by both both by environment and "module" you are working on? The less things 
 you touch at one time, the less you are likely to break these things.
 
-##### NOTE:
-When I say module in quotes or internal_module, I am referring to a 
-Terraform configuration for a specific product/thing you are creating. It should  
-be agnostic of environment so that you can plug variables into it in order to 
-maintain separate states for the environments and this module.
-Perhaps it would be better to use another name in the future.
-
 ### Terraform Wrapper
 To enforce my best practices within Terraform, I have written a Terraform wrapper
 that has a handful of checks in it to ensure you are working within the structure
@@ -31,19 +24,19 @@ that we have setup for this repository. Run the script from the root directory o
 this project (terraform.sh) with the -h argument or none and it will output the
 'HELP' message explaining how to use it. In short:
 ```
-./terraform.sh (action) (environment) (module) (optional_extra_tf_args)
+./terraform.sh (action) (environment) (config) (optional_extra_tf_args)
 ```
 This script does the following things (among potential others):
 * Implements various failsafes to make sure you are adhering to best practices:
   * Makes sure you are in the root directory of this project before executing.
   * Makes sure that you have a valid .aws directory/symlink created in the project root.
   * Makes sure that you are specifying a valid Terraform action before executing.
-  * Makes sure that you are specifying a valid (internal) module before executing.
+  * Makes sure that you are specifying a valid config before executing.
   * Makes sure that you are specifying a valid environment before executing.
-* Pulls (external) modules with Terraform "get" then validates your code before running.
-* Sets up remote state files on S3 separated by environment and (internal) module.
+* Pulls modules with Terraform "get" then validates your code before running.
+* Sets up remote state files on S3 separated by environment and config.
   * Locks these state files if you are running this script -- in turn checks for
-a lock to make sure nobody else is Terraforming the same (internal) module you are
+a lock to make sure nobody else is Terraforming the same config you are
 
 ### AWS Credentials
 To setup AWS credentials, create a symlink of your AWS config directory to the 
@@ -58,7 +51,7 @@ common sections of the .tfvars files.
 #### See the module_templates folder under the modules folder for examples.
 
 By default, for every resource you create, you should call a module for that 
-resource. The folder structure of an "external" module will look like this:
+resource. The folder structure of a module will look like this:
 > external_module
 >> main.tf
 
@@ -66,22 +59,24 @@ resource. The folder structure of an "external" module will look like this:
 
 >> outputs.tf
 
-The folder structure of an "internal" module will look similar to this:
-> internal_module
->> .terraform/* (This is a git ignored file, it contains module symlinks, etc. 
-which get created with Terraform get)
+### Config Structure
 
->> internal_module.tf
+The folder structure of a config will look similar to this:
+> config
+>> .terraform/* (This is a git ignored file, it contains module symlinks which 
+get created with Terraform get)
+
+>> config.tf
 
 >> variables.tf -> ../../../variables/common.tfvars (This file is a symlink to 
 common.tfvars, more info below)
 
 ### Variable Structure
-In order to group common variables together easily, every internal module by 
+In order to group common variables together easily, every config by 
 default symlinks the common.tfvars file found in the root "variables" directory. 
-From the internal module directory, symlink the 'common.tfvars' file:
+From the config directory, symlink the 'common.tfvars' file:
 ```
-ln -s ../../../variables/common.tfvars variables.tf
+ln -s ../../variables/common.tfvars variables.tf
 ```
 
 When using the wrapper to call a Terraform command, it will by default pull in 
