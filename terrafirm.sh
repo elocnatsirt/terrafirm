@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Written by: https://github.com/GuitarrasDeAmor
+# Written by: https://github.com/elocnatsirt
 # This is a wrapper script for Terraform that allows us to have separate state files per environment and config.
 
 # Help options http://tuxtweaks.com/2014/05/bash-getopts/
@@ -45,20 +45,22 @@ while getopts :h FLAG; do
   esac
 done
 
-# Set environment variables for Terraforming
+# Gather CLI input into variables
 action=$1
 environment=$2
 config=$3
-s3_bucket="your_state_bucket"
-aws_profile="default"
 extra_args=$4
 
+# Source Terrafirm variables
+source variables/terrafirm_variables.sh
+
 # Make sure the user is in the root directory of the terraform repo.
-if [ "${PWD##*/}" != "terraform_repo_name" ]; then
+if [ "${PWD##*/}" != "${project_name}" ]; then
 	echo "You need to be in the root of the Terraform project."
 	exit 1
 fi
 
+# TODO: Potentially allow for environment variables or perhaps user's ~/.aws if exists?
 # Make sure the user has a valid .aws directory; if not, ask them to create it.
 ls .aws &>/dev/null
 check_aws_dir=`echo $?`
@@ -67,6 +69,7 @@ if [ "${check_aws_dir}" -ne 0 ]; then
 	exit 1
 fi
 
+# TODO: Support more actions for Terraform. If other than below actions are called, check if extra options make sense?
 # Check the action argument to see if it calls an actual terraform action.
 if [ "${action}" != 'plan' ] && [ "${action}" != 'apply' ] && [ "${action}" != 'destroy' ]; then
 	echo "Specify whether you want to plan, apply, or destroy an environment."
@@ -74,9 +77,9 @@ if [ "${action}" != 'plan' ] && [ "${action}" != 'apply' ] && [ "${action}" != '
 fi
 
 # Check the environment argument to see if it calls a real environment.
-if [ "${environment}" != "dev" ] && [ "${environment}" != "stage" ] && [ "${environment}" != "prod" ]; then
-	echo "You need to specify an environment."
-	exit 1
+if [[ " ${my_environments[*]} " != *" ${environment} "* ]]; then
+  echo "You need to specify an environment."
+  exit 1
 fi
 
 # Check the config to make sure we actually specified one.
@@ -90,8 +93,19 @@ else
   if [ "${check_config_exists}" -ne 0 ]; then
 	  echo "Are you sure this config exists? Cannot find the config at $(pwd)/configs/${config}/"
 	  exit 1
+  else
+    cd .terraform/ &>/dev/null
+    check_directory_exists=`echo $?`
+      if [ "${check_directory_exists}" -ne 0 ]; then
+        echo "${REV}Notice:${NORM} Creating .terraform directory at $(pwd)/.terraform since it doesn't appear to exist."
+        mkdir .terraform
+      else
+        cd ../
+      fi
 	fi
 fi
+
+echo ""
 
 # Check for extra_args; if they exist, make sure they are prefixed with a hyphen.
 if [ "${extra_args}" != "" ] && [[ "${extra_args}" != -* ]]; then
@@ -99,7 +113,7 @@ if [ "${extra_args}" != "" ] && [[ "${extra_args}" != -* ]]; then
 	exit 1
 fi
 
-# Gather any modules necessary; if the modues cannot be found, stop here.
+# Gather any modules necessary; if the modules cannot be found, stop here.
 terraform get
 check_get=`echo $?`
 if [ "${check_get}" -ne 0 ]; then
@@ -115,6 +129,8 @@ if [ "${check_validation}" -ne 0 ]; then
 	exit 1
 fi
 
+echo ""
+
 # Create a graph and place it in the .terraform folder if the user has DOT installed
 dot -? &>/dev/null
 check_dot=`echo $?`
@@ -122,15 +138,16 @@ if [ "${check_dot}" -eq 0 ]; then
   terraform graph -draw-cycles | dot -Tpng > .terraform/${config}.png
   echo -e "${REV}Notice:${NORM} A visual graph of your execution has been created for this config. View it with the command below:\n    open $(pwd)/.terraform/${config}.png\n"
 else
-	echo -e "${REV}Notice:${NORM}If you want visual representations of your Terraform execution, install Graphviz. To install on a Mac, run the command below:\n    brew install graphviz\n"
+	echo -e "${REV}Notice:${NORM} If you want visual representations of your Terraform execution, install Graphviz. To install on a Mac, run the command below:\n    > brew install graphviz\n"
 fi
 
 # Remove any local terraform.tfstate files
 # If you are working in one environment, and switch to another, these files will get copied up if not deleted
 # We will not remove the terraform.tfstate.lock if it is there, as that could cause problems.
 echo -e "${REV}Notice:${NORM} Removing terraform.tfstate files currently in place..."
-rm .terraform/terraform.tfstate
-rm .terraform/terraform.tfstate.backup
+rm .terraform/terraform.tfstate &>/dev/null
+rm .terraform/terraform.tfstate.backup &>/dev/null
+echo ""
 
 # Check for a lock file; if it exists, warn the user. If not, create it.
 aws --profile ${aws_profile} s3 ls s3://${s3_bucket}/${environment}/${config}/terraform.tfstate.lock
@@ -145,11 +162,12 @@ if [ "${check_local_lock_exists}" -eq 0 ]; then
 	echo -e "${REV}WARNING:${NORM} There is a local lock file in place, however there appears to be no remote lock file in place.\nIf you believe this warning to be in error, execute the command below and re-run this script.\n    rm $(pwd)/.terraform/terraform.tfstate.lock"
 	exit 1
 else
-	echo -e "No lock file present. Creating lock file..."\\n
+	echo -e "${REV}Notice:${NORM} No local lock file present. Creating lock file..."\\n
 	echo -e "Terraform is currently working. DO NOT REMOVE THIS LOCK FILE MANUALLY.\nLock file placed on $(date)" > .terraform/terraform.tfstate.lock
-	echo "Uploading lock file to S3..."
+	echo "${REV}Notice:${NORM} Uploading lock file to S3..."
 	aws --profile ${aws_profile} s3 cp .terraform/terraform.tfstate.lock s3://${s3_bucket}/${environment}/${config}/terraform.tfstate.lock
-	sleep 5
+  echo ""
+  sleep 5
 fi
 
 # Setup the Terraform remote configuration in the specified S3 bucket separated by environment and config.
@@ -161,8 +179,11 @@ terraform remote config -backend=s3 -backend-config="bucket=${s3_bucket}" -backe
 terraform ${action} -var-file ../../variables/${environment}.tfvars ${extra_args}
 
 # Remove the lock file locally and remotely
-echo -e "Terraform is finished running. Removing lock file from S3..."
+echo ""
+echo -e "${REV}Notice:${NORM} Terraform is finished running. Removing lock file from S3..."
 sleep 5
 aws --profile ${aws_profile} s3 rm s3://${s3_bucket}/${environment}/${config}/terraform.tfstate.lock
-echo -e \\n"Removing local lock file..."
+echo -e \\n"${REV}Notice:${NORM} Removing local lock file..."
 rm .terraform/terraform.tfstate.lock
+
+echo -e \\n"${REV}Notice:${NORM} Terrafirm has finished Terraforming!"

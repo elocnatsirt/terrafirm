@@ -21,10 +21,10 @@ you touch at one time, the less you are likely to break these things.
 To enforce my best practices within Terraform, I have written a Terraform wrapper
 that has a handful of checks in it to ensure you are working within the structure
 that we have setup for this repository. Run the script from the root directory of
-this project (terraform.sh) with the -h argument or none and it will output the
+this project (terrafirm.sh) with the -h argument or none and it will output the
 'HELP' message explaining how to use it. In short:
 ```
-./terraform.sh (action) (environment) (config) (optional_extra_tf_args)
+./terrafirm.sh (action) (environment) (config) (optional_extra_tf_args)
 ```
 This script does the following things (among potential others):
 * Implements various failsafes to make sure you are adhering to best practices:
@@ -82,7 +82,7 @@ ln -s ../../variables/common.tfvars variables.tf
 When using the wrapper to call a Terraform command, it will by default pull in 
 the secondary variables file of the environment you have specified. For instance: 
 ```
-./terraform.sh plan dev microservice
+./terrafirm.sh plan dev config
 ```
 Will pull in the 'variables/dev.tfvars' file to override (if set/necessary) any 
 defaults set forth in 'common.tfvars'.
