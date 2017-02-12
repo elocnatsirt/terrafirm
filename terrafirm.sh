@@ -71,9 +71,10 @@ fi
 
 # TODO: Support more actions for Terraform. If other than below actions are called, check if extra options make sense?
 # Check the action argument to see if it calls an actual terraform action.
-if [ "${action}" != 'plan' ] && [ "${action}" != 'apply' ] && [ "${action}" != 'destroy' ]; then
-	echo "Specify whether you want to plan, apply, or destroy an environment."
-	exit 1
+valid_actions=( plan apply destroy )
+if [[ " ${valid_actions[*]} " != *" ${environment} "* ]]; then
+  echo "Specify whether you want to plan, apply, or destroy an environment."
+  exit 1
 fi
 
 # Check the environment argument to see if it calls a real environment.
@@ -164,7 +165,7 @@ if [ "${check_local_lock_exists}" -eq 0 ]; then
 else
 	echo -e "${REV}Notice:${NORM} No local lock file present. Creating lock file..."\\n
 	echo -e "Terraform is currently working. DO NOT REMOVE THIS LOCK FILE MANUALLY.\nLock file placed on $(date)" > .terraform/terraform.tfstate.lock
-	echo "${REV}Notice:${NORM} Uploading lock file to S3..."
+	echo -e "${REV}Notice:${NORM} Uploading lock file to S3..."
 	aws --profile ${aws_profile} s3 cp .terraform/terraform.tfstate.lock s3://${s3_bucket}/${environment}/${config}/terraform.tfstate.lock
   echo ""
   sleep 5
