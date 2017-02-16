@@ -72,7 +72,7 @@ fi
 # TODO: Support more actions for Terraform. If other than below actions are called, check if extra options make sense?
 # Check the action argument to see if it calls an actual terraform action.
 valid_actions=( plan apply destroy )
-if [[ " ${valid_actions[*]} " != *" ${environment} "* ]]; then
+if [[ " ${valid_actions[*]} " != *" ${action} "* ]]; then
   echo "Specify whether you want to plan, apply, or destroy an environment."
   exit 1
 fi
