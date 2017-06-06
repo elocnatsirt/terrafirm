@@ -8,6 +8,7 @@ workflow/structure for a Terraform project.
 ## Project Structure
 Terrafirm expects a project with this basic structure:
 ```
+| project_root
 ├── configs
 │   └── config
 │       ├── config.tf
@@ -40,6 +41,14 @@ The wrapper assumes a few things:
 - You are storing states remotely in an S3 backend.
   - The finished path to a remote state file would look like this: 
 ```s3://$state_bucket/$environment/$config/terrafirm.tfstate```
+
+#### Terrafirm Variables
+Terrafirm will source a variables file named "terrafirm_variables.sh" from the 
+"variables" folder of your project. This will allow you to set variables such 
+as your S3 bucket name to store remote states.
+
+When you add a new environment, be sure to add the environment name to the 
+$my_environments list in this file.
 
 ## Testing and Validation
 There is a pre-commit hook script in the root of this directory. To enable it locally,
