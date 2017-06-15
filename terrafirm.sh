@@ -26,7 +26,7 @@ config=$2
 tf_cmd=$3
 
 NUMARGS=$#
-if [ $NUMARGS -le 3 ]; then
+if [ $NUMARGS -le 2 ]; then
   HELP
 elif [ $NUMARGS -gt 3 ]; then
   while shift && [ -n "$3" ]; do
