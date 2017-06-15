@@ -21,15 +21,18 @@ function HELP {
   exit 1
 }
 
-NUMARGS=$#
-if [ $NUMARGS -le 2 ]; then
-  HELP
-fi
-
 environment=$1
 config=$2
 tf_cmd=$3
-extra_tf_args=$4
+
+NUMARGS=$#
+if [ $NUMARGS -le 3 ]; then
+  HELP
+elif [ $NUMARGS -gt 3 ]; then
+  while shift && [ -n "$3" ]; do
+    extra_tf_args="${extra_tf_args} $3"
+  done
+fi
 
 # Source Terrafirm variables
 source variables/terrafirm_variables.sh
