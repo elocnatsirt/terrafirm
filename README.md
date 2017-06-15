@@ -10,12 +10,14 @@ Terrafirm expects a project with this basic structure:
 ```
 | project_root
 ├── configs
-│   └── config
-│       ├── config.tf
+│   └── example_config
+│       └──  config.tf
 ├── terrafirm.sh
 └── variables
     ├── environments
-    │   └── environment.tfvars
+    │   └── dev
+    │       └── common.tfvars
+    │       └── example_config.tfvars
     └── terrafirm_variables.sh
 ```
 
@@ -25,15 +27,15 @@ do not currently enforce any kind of project structure or separation of
 variables.
 
 Instead of using these namespaces, Terrafirm declares environments simply by 
-using named variable files. At runtime, these files will always be passed to 
-Terraform in order to override any defaults with environment specific 
-configuration. In turn, this pushes you to create environment agnostic configs 
+using named variable folders. At runtime, these files will always be passed to 
+Terraform in order to override any config defaults with environment specific 
+variables. In turn, this pushes you to create environment agnostic configs 
 which keeps your environments in line with each other.
 
 ### Wrapper
 **Basic Usage**:
 ```
-./terrafirm.sh (environment) (config) (terraform_command)
+./terrafirm.sh (environment) (config) (terraform_command) (extra_args)
 ```
 
 The wrapper assumes a few things:

@@ -15,8 +15,9 @@ function HELP {
   echo "Command line options:"
   echo -e "${REV}\$1${NORM} (Required) TF environment name. Will reference an environment specific variable file of the same name."
   echo -e "${REV}\$2${NORM} (Required) TF configuration name to manage."
-  echo -e "${REV}\$3${NORM} (Required) Command and extra args for Terraform to run against specified environment and configuration."
-  echo -e "Example: ${BOLD}$SCRIPT dev vpc plan${NORM}"\\n
+  echo -e "${REV}\$3${NORM} (Required) Command for Terraform to run against specified environment and configuration."
+  echo -e "${REV}\$4${NORM} (Optional) Extra args to pass to Terraform."
+  echo -e "Example: ${BOLD}$SCRIPT dev vpc plan -var 'map={ override = "yes" }'${NORM}"\\n
   exit 1
 }
 
@@ -28,9 +29,9 @@ fi
 environment=$1
 config=$2
 tf_cmd=$3
+extra_tf_args=$4
 
 # Source Terrafirm variables
-# TODO: Let individuals source their own variable file
 source variables/terrafirm_variables.sh
 
 # Make sure the user is in the root directory of the terraform repo.
@@ -66,7 +67,15 @@ fi
 # Initialize the Terrafirm remote state and gather modules
 terraform init -input=false -get=true -backend=true -backend-config="key=${environment}/${config}/terrafirm.tfstate'" -backend-config="bucket=${s3_bucket}" -backend-config="region=${s3_bucket_region}" -backend-config="profile=${aws_profile}" -backend-config="shared_credentials_file=${aws_creds_file}"
 
+# Gather variable files
+variable_files=""
+for filename in "../../variables/environments/${environment}/*"; do
+  for file in $filename; do
+    variable_files=$variable_files" -var-file $file"
+  done
+done
+
 # Run the Terraform command specified
-terraform ${tf_cmd} -var-file ../../variables/environments/${environment}.tfvars
+terraform ${tf_cmd} ${variable_files} ${extra_tf_args}
 
 echo -e \\n"${REV}Notice:${NORM} Finished Terraforming '${environment} ${config}'"
