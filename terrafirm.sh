@@ -161,6 +161,9 @@ if ! terraform validate; then
   exit 1
 fi
 
+# Remove local .terraform directory before running to prevent environment conflicts
+rm -rf .terraform/
+
 # Initialize the Terrafirm remote state and gather modules
 terraform init -input=false -get=true -backend=true -backend-config="key=${environment}/${config}/terrafirm.tfstate'" -backend-config="bucket=${s3_bucket}" -backend-config="region=${s3_bucket_region}" -backend-config="profile=${aws_profile}" -backend-config="shared_credentials_file=${aws_creds_file}"
 
