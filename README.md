@@ -1,69 +1,11 @@
 # Terrafirm
+*Terrafirm* is my vision of an ideal Terraform project structure/workflow.
 
-Terrafirm is a wrapper around Terraform that enforces what I feel is an ideal 
-workflow/structure for a Terraform project.
-Terrafirm also provides some helpers that enable you to streamline the writing 
-of modules based on the Terrafirm structure.
+By nature, the wrapper is very strict and requires your project to have a very 
+defined structure. See the helper section below for information on how to 
+generate this structure.
 
-The basics required to use this script are the folder structure defined in this 
-project/README and a 'terrafirm_variables.sh' file with the necessary variables 
-in the variables folder relative to your project root. See the helper section 
-below for information on how to generate this structure.
-
-# Usage
-
-## Wrapper
-**Usage**:
-```
-./terrafirm.sh (environment) (config) (terraform_command) (extra_args)
-```
-
-The wrapper assumes a few things:
-- You have the structure defined in this project (see helpers below to generate).
-- You are storing states remotely in an S3 backend.
-  - The finished path to a remote state file would look like this: 
-```s3://$state_bucket/$environment/$config/terrafirm.tfstate```
-
-## Terrafirm Helpers
-**Usage**:
-```
-./terrafirm.sh -(terrafirm_helper_option) (args)
-```
-
-**NOTE**
-These helpers are all experimental. Do not expect them to work perfectly every 
-time. Ideally you would stage any changes within your repository before running 
-one of these helpers just in case of any accidental changes.
-
-### Terrafirm Structure Generator
-
-**Terrafirm Variables**
-Terrafirm will source a variables file named "terrafirm_variables.sh" from the 
-"variables" folder of your project. This will allow you to set variables such 
-as your S3 bucket name to store remote states.
-
-When you add a new environment, be sure to add the environment name to the 
-'$my_environments' list in this file.
-
-**Folder Structure**
-Terrafirm expects a project with this basic structure:
-```
-| project_root
-├── configs
-│   └── example_config
-│       └──  config.tf
-├── modules
-│   └── example_module
-│       └──  module.tf
-├── terrafirm.sh
-└── variables
-    ├── environments
-    │   └── dev
-    │       └── common.tfvars
-    │       └── example_config.tfvars
-    └── terrafirm_variables.sh
-```
-
+## Environments
 Terraform provides a native implementation of "environments", which are simply 
 arbitrary namespaces that separate out pieces of your state. These environments 
 do not currently enforce any kind of project structure or separation of 
@@ -77,6 +19,108 @@ passed to Terraform in order to override any config defaults with environment
 specific variables. In turn, this pushes you to create environment agnostic 
 configs which keeps your environments in line with each other.
 
+## Variables
+Terrafirm will source a variables file named "terrafirm_variables.sh" from the 
+"terrafirm_files" folder of your project. This will allow you to set variables 
+such as your S3 bucket name to store remote states. You can generate this file 
+with sane defaults using the 'Terrafirm Structure Generator' helper.
+
+### Secret Variables
+Terrafirm gives you the option to have a secret variables file per environment. 
+These files are located in the standard environment specific variables folder, 
+and currently have a static name of ```secret.tfvars(.encrypted)```. These secret 
+files automatically get decrypted at runtime and then re-encrypted after if they 
+exist. It is worth noting that the secret variables file is the last var-file 
+passed to Terraform.
+
+To use the secret variable feature, all you have to do is add your public GPG key 
+to a file named ```(terrafirm_root)/terrafirm_files/public_keys/(public_key_id)```. 
+See the 'Terrafirm Helpers' section below for various secret helpers that 
+enable you to easily encrypt and edit your secrets.
+
+**NOTE** It is important to use the key's ID as the filename when adding GPG keys 
+to the project. When encrypting secrets, Terrafirm uses the names of these files 
+to include as GPG recipients after importing to the local keychain.
+
+## Wrapper
+**Usage**
+```
+./terrafirm (environment) (config) (terraform_command) (extra_args)
+```
+
+The wrapper assumes a few things:
+- You have the structure defined in this project (see helpers below to generate).
+- You are storing states remotely in an S3 backend.
+  - The finished path to a remote state file would look like this: 
+```s3://$state_bucket/$environment/$config/terrafirm.tfstate```
+
+### Terrafirm Helpers
+**Usage**
+```
+./terrafirm -(terrafirm_helper_option) (args)
+```
+
+**NOTE**
+These helpers are all experimental. Do not expect them to work perfectly. Ideally 
+you would stage any changes within your repository before running one of these 
+helpers just in case of any accidental changes.
+
+### Terrafirm Structure Generator
+Terrafirm requires a specific project structure. This helper will generate the 
+basic structure in your project:
+
+```
+| project_root
+├── configs
+├── modules
+├── terrafirm_files
+│   ├── public_keys
+│   └── terrafirm_variables.sh
+├── terrafirm
+└── variables
+    └── environments
+```
+
+See this project's structure for a more detailed layout.
+
+### Secret Variables File Editor
+Working with secrets in Terrafirm requires you to have a file named ```secret.tfvars(.encrypted)```` 
+in your environment variables folder. If this file is present, Terrafirm will 
+automatically decrypt it at runtime and then re-encrypt it after Terraform finishes 
+running.
+
+You can create this encrypted file in one of two ways: by calling this helper and 
+letting it create this file for you (you will have a chance to edit it as well) 
+or creating a ```variables/environments/(env)/secret.tfvars``` file with your 
+secrets and running Terrafirm as you would normally.
+
+**NOTE** This is a variables file by nature. It has not been tested with any 
+other Terraform specific configuration. However, you could in theory include 
+commented sections of other secrets such as Terraform user AWS keys. In the 
+future, the idea is to expand secrets to Terraform modules/configurations and/or 
+other types of secrets.
+
+**NOTE** Due to the nature of PGP, Git, and how the script is currently written, 
+whenever you run Terrafirm these encrypted files will change, prompting Git to 
+think it has uncommitted changes even though the "content" hasn't changed. Be 
+careful when commiting/editing these files and be aware of your changes. My advice 
+is to commit any secret file as soon as you make a content change. This will be 
+fixed in the near future.
+
+### Re-Encrypt Secret Variables File
+The secret variable files in your project are encrypted with any public keys that 
+are included in the ```terrafirm_files/public_keys``` folder. When adding a new 
+member to your team, in order to work with secrets they will need to generate 
+their own GPG keypair and add their public key to the project. Once added, an 
+existing team member can re-encrypt the secret files with this helper allowing 
+them to decrypt the Terrafirm files at runtime. The added benefit is that if you 
+remove a team member or recycle a keypair, their access will be automatically 
+removed the next time the secrets are encrypted.
+
+**NOTE** GPG keys that use a passphrase will be prompted to enter it during the 
+Terrafirm runtime. If you are using Terrafirm in an automated fashion, use a GPG 
+key that does not have a passphrase.
+
 ### Module Resource Generator
 When writing a module, you will need a resource accompanied with a set of 
 variables and outputs. The Terraform documentation is straight forward on how 
@@ -84,10 +128,8 @@ to configure/write these resources, but the process is generally going to the
 documentation and copying into your own configuration.
 
 To aide writing module resources, pass Terrafirm the "-m" option and a provider 
-name combined with a resource name by an underscore, like so: "aws_alb". In this 
-example, Terrafirm would create a directory at 
-"terrafirm_root/modules/terrafirm_generated_aws_alb" with a file named 
-"aws_alb.tf". Example output:
+name combined with a resource name by an underscore, like so: "aws_alb". Example 
+output: 
 
 ```
 # Module Resource
@@ -117,11 +159,5 @@ of what your module/resource should look like.
 ### Custom Module Variable Generator
 After writing a module, you have to define the variables that you are passing 
 somewhere. Instead of doing this by hand, pass Terrafirm the "-v" option and a 
-module directory and let it generate a variables file for you.
-
-## Testing and Validation
-There is a pre-commit hook script in the root of this directory. To enable it 
-locally, run this command from the project root:
-```
-ln -s pre-commit.sh .git/hooks/pre-commit
-```
+module directory and it will generate a variable file named ```generated_variables.tf``` 
+inside your module directory.
