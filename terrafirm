@@ -27,7 +27,7 @@ function help {
   echo -e "${REV}-m${NORM} Generates a module based on the Terraform provider and resource provided."
   echo -e "  - Argument must be in the form of 'provider_resource'."
   echo -e "  - Example: ${BOLD}$SCRIPT -m aws_alb ${NORM}"
-  echo -e "${REV}-r${NORM} Re-encrypts secret variable files in all environments."
+  echo -e "${REV}-r${NORM} Re-encrypts secret variable files in all environments with current GPG keys."
   echo -e "  - Example: ${BOLD}$SCRIPT -r ${NORM}"
   echo -e "${REV}-s${NORM} Generates a basic Terrafirm directory structure based on the directory you are currently in."
   echo -e "  - Example: ${BOLD}$SCRIPT -s ${NORM}"
@@ -62,8 +62,8 @@ function generate_structure {
   mkdir -p configs
   mkdir -p modules
   mkdir -p variables/environments
-  mkdir -p terrafirm/public_keys
-  tee "terrafirm/terrafirm_variables.sh" <<EOF > /dev/null
+  mkdir -p terrafirm_files/public_keys
+  tee "terrafirm_files/terrafirm_variables.sh" <<EOF > /dev/null
 #!/usr/bin/env bash
 project_name="terrafirm"
 s3_bucket="terraform-states"
@@ -125,28 +125,27 @@ function sign {
   while read -r secret; do
     decrypt ${secret}
     encrypt ${secret}
-    echo "Encrypted '${secret}' with keys located in '${PWD}/terrafirm/public_keys/'"
+    echo "Encrypted '${secret}' with keys located in '${PWD}/terrafirm_files/public_keys/'"
   done <<< "${secret_files}"
   exit
 }
 
 ## GPG Helper Functions
 function decrypt {
-  gpg -q --output ${1} --decrypt ${1}.encrypted
-  rm ${1}.encrypted
+  gpg --batch --yes -q --output ${1} --decrypt ${1}.encrypted
 }
 
 function encrypt {
   import_keys
-  for file in ${PWD}/terrafirm/public_keys/*; do
+  for file in ${PWD}/terrafirm_files/public_keys/*; do
     ids+="-r ${file##*/} "
   done
-  gpg -q --output ${1}.encrypted --encrypt ${ids}${1}
+  gpg --batch --yes -q --output ${1}.encrypted --encrypt ${ids}${1}
   rm $1
 }
 
 function import_keys {
-  gpg -q --import ${PWD}/terrafirm/public_keys/*
+  gpg --batch --yes -q --import ${PWD}/terrafirm_files/public_keys/*
 }
 
 # Interpret options if supplied
@@ -193,7 +192,7 @@ elif [ $NUMARGS -gt 3 ]; then
 fi
 
 # Source Terrafirm variables
-source terrafirm/terrafirm_variables.sh
+source terrafirm_files/terrafirm_variables.sh
 
 # Make sure the user is in the root directory of the terraform repo.
 if [ "${PWD##*/}" != "${project_name}" ]; then
@@ -250,7 +249,7 @@ fi
 terraform ${tf_cmd} ${variable_files} ${extra_tf_args}
 
 # Re-encrypt secrets if variable file exists
-if [ -e "../../variables/environments/${environment}/secret.tfvars" ]; then
+if [ -e "../../variables/environments/${environment}/secret.tfvars" ] ; then
   cd ../../ >/dev/null 2>&1
   encrypt "variables/environments/${environment}/secret.tfvars"
 fi
