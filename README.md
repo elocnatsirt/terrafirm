@@ -128,10 +128,8 @@ to configure/write these resources, but the process is generally going to the
 documentation and copying into your own configuration.
 
 To aide writing module resources, pass Terrafirm the "-m" option and a provider 
-name combined with a resource name by an underscore, like so: "aws_alb". In this 
-example, Terrafirm would create a directory at 
-"terrafirm_root/modules/terrafirm_generated_aws_alb" with a file named 
-"aws_alb.tf". Example output:
+name combined with a resource name by an underscore, like so: "aws_alb". Example 
+output: 
 
 ```
 # Module Resource
@@ -161,4 +159,5 @@ of what your module/resource should look like.
 ### Custom Module Variable Generator
 After writing a module, you have to define the variables that you are passing 
 somewhere. Instead of doing this by hand, pass Terrafirm the "-v" option and a 
-module directory and let it generate a variables file for you.
+module directory and it will generate a variable file named ```generated_variables.tf``` 
+inside your module directory.

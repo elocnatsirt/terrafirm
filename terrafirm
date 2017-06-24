@@ -93,26 +93,24 @@ function generate_module {
   variables=`echo -e "${page}" | sed '1,/<p>The following arguments are supported/d;/<h2 id="attributes-reference">/,$d' | grep '<a name=' | sed 's/.*"><code>//;s/<\/code><\/a>//;s/<code>//g;s/<\/code>//g'`
   outputs=`echo -e "${page}" | sed '1,/<p>The following attributes are exported/d;/<h2/,$d' | grep '<a name=' | sed 's/.*"><code>//;s/<\/code><\/a>//;s/<code>//g;s/<\/code>//g' | sed 's/^/output "/;s/ [-=] /" {  description = "/;s/$/"}/'`
 
-  echo -e "${BOLD}Notice:${NORM} Generating module from ${url}"
   mkdir -p $new_dir || exit
   cd $new_dir || exit
-  echo -e "# Module Resource" > ${provider}_${resource}.tf
-  echo -e "resource \"$1\" \"$1\" {" >> ${provider}_${resource}.tf
+  echo -e "# Module Resource"
+  echo -e "resource \"$1\" \"$1\" {"
   while read -r var; do
     short_var=`echo -e "${var}" | sed 's/ [-=] .*//' | tr -d '\n'`
-    echo -e "  ${short_var} = \"\${var.$short_var}\"" >> ${provider}_${resource}.tf
+    echo -e "  ${short_var} = \"\${var.$short_var}\""
   done <<< "${variables}"
-  echo -e "}" >> ${provider}_${resource}.tf
+  echo -e "}"
 
-  echo -e \\n"# Module Outputs" >> ${provider}_${resource}.tf
+  echo -e \\n"# Module Outputs"
   while read -r line; do
     id=`echo -e "${line}" | sed 's/output "//;s/".*//' | tr -d '\n'`
-    echo -e "${line}" | sed $'s/{/{\\\n/g;s/}/\\\n}/g' | sed "s,},  value       = \"\${$1.$1.$id}\"}," | sed 's/}"}/}"\'$'\n}/' >> ${provider}_${resource}.tf
+    echo -e "${line}" | sed $'s/{/{\\\n/g;s/}/\\\n}/g' | sed "s,},  value       = \"\${$1.$1.$id}\"}," | sed 's/}"}/}"\'$'\n}/'
   done <<< "${outputs}"
 
-  echo -e \\n"# Module Variables" >> ${provider}_${resource}.tf
-  echo -e "${variables}" | sed 's/^/variable "/;s/ [-=] /" {  description = "/;s/$/"}/' | sed $'s/{/{\\\n/g;s/}/\\\n}/g' >> ${provider}_${resource}.tf
-  echo -e "${BOLD}Notice:${NORM} Module file generated at ${PWD}/${provider}_${resource}.tf"
+  echo -e \\n"# Module Variables"
+  echo -e "${variables}" | sed 's/^/variable "/;s/ [-=] /" {  description = "/;s/$/"}/' | sed $'s/{/{\\\n/g;s/}/\\\n}/g'
   exit
 }
 
