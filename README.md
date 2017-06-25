@@ -65,7 +65,7 @@ These helpers are all experimental. Do not expect them to work perfectly. Ideall
 you would stage any changes within your repository before running one of these 
 helpers just in case of any accidental changes.
 
-### Terrafirm Structure Generator
+### Terrafirm Structure Generator (generate_structure)
 Terrafirm requires a specific project structure. This helper will generate the 
 basic structure in your project:
 
@@ -83,7 +83,7 @@ basic structure in your project:
 
 See this project's structure for a more detailed layout.
 
-### Secret Variables File Editor
+### Secret Variables File Editor (edit_secrets)
 Working with secrets in Terrafirm requires you to have a file named ```secret.tfvars(.encrypted)```` 
 in your environment variables folder. If this file is present, Terrafirm will 
 automatically decrypt it at runtime and then re-encrypt it after Terraform finishes 
@@ -100,14 +100,16 @@ commented sections of other secrets such as Terraform user AWS keys. In the
 future, the idea is to expand secrets to Terraform modules/configurations and/or 
 other types of secrets.
 
-**NOTE** Due to the nature of PGP, Git, and how the script is currently written, 
-whenever you run Terrafirm these encrypted files will change, prompting Git to 
-think it has uncommitted changes even though the "content" hasn't changed. Be 
-careful when commiting/editing these files and be aware of your changes. My advice 
-is to commit any secret file as soon as you make a content change. This will be 
-fixed in the near future.
+**NOTE** Due to the nature of GPG and Git, if you edit a variables file it WILL 
+show as uncommited even if you have not changed the content. If you just want to 
+view your secrets, use the ```view_secrets``` helper instead.
 
-### Re-Encrypt Secret Variables File
+### Secret Variables File Viewer (view_secrets)
+Prints out the contents of the secret variables file to STDOUT for the environment 
+specified. This will allow you to see your current secrets without causing git to 
+detect any changes.
+
+### Re-Encrypt All Secret Variables Files (encrypt_secrets)
 The secret variable files in your project are encrypted with any public keys that 
 are included in the ```terrafirm_files/public_keys``` folder. When adding a new 
 member to your team, in order to work with secrets they will need to generate 
@@ -121,7 +123,7 @@ removed the next time the secrets are encrypted.
 Terrafirm runtime. If you are using Terrafirm in an automated fashion, use a GPG 
 key that does not have a passphrase.
 
-### Module Resource Generator
+### Module Resource Generator (generate_module)
 When writing a module, you will need a resource accompanied with a set of 
 variables and outputs. The Terraform documentation is straight forward on how 
 to configure/write these resources, but the process is generally going to the 
@@ -156,7 +158,7 @@ string variables from lists, and if Hashicorp were to update their documentation
 it would break instantly. It is good for getting a quick and dirty representation 
 of what your module/resource should look like.
 
-### Custom Module Variable Generator
+### Custom Module Variable Generator (generate_variables)
 After writing a module, you have to define the variables that you are passing 
 somewhere. Instead of doing this by hand, pass Terrafirm the "-v" option and a 
 module directory and it will generate a variable file named ```generated_variables.tf``` 

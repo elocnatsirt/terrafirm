@@ -6,7 +6,7 @@
 # Terrafirm also provides some helpful functions that allow you to streamline 
 # writing and validating your Terraform modules and configurations.
 
-# Script Help
+## Script Help
 SCRIPT=`basename ${BASH_SOURCE[0]}`
 NORM=`tput sgr0`
 BOLD=`tput bold`
@@ -14,7 +14,7 @@ REV=`tput smso`
 
 function help {
   echo -e \\n"${REV}Basic usage:${NORM} ${BOLD}$SCRIPT (environment) (config) (cmd) (optional_args) ${NORM}"
-  echo -e "${REV}Advanced usage:${NORM} ${BOLD}$SCRIPT -(terrafirm_helper_option) (args) ${NORM}"\\n
+  echo -e "${REV}Advanced usage:${NORM} ${BOLD}$SCRIPT (terrafirm_helper) (args) ${NORM}"\\n
   echo -e "${BOLD}Basic command line options:${NORM}"
   echo -e "${REV}\$1${NORM} (Required) TF environment name. Will reference an environment specific variable file of the same name."
   echo -e "${REV}\$2${NORM} (Required) TF configuration name to manage."
@@ -22,23 +22,25 @@ function help {
   echo -e "${REV}\$4${NORM} (Optional) Extra args to pass to Terraform."
   echo -e "Example: ${BOLD}$SCRIPT dev vpc plan -var 'map={ override = "yes" }'${NORM}"\\n
   echo -e "${BOLD}Terrafirm helper options:${NORM}"
-  echo -e "${REV}-f${NORM} Edit the secret variable file for the environment specified."
-  echo -e "  - Example: ${BOLD}$SCRIPT -f dev ${NORM}"
-  echo -e "${REV}-m${NORM} Generates a module based on the Terraform provider and resource provided."
+  echo -e "${REV}edit_secrets${NORM} Edit the secret variable file for the environment specified."
+  echo -e "  - Example: ${BOLD}$SCRIPT edit_secrets dev ${NORM}"
+  echo -e "${REV}encrypt_secrets${NORM} Re-encrypts secret variable files in all environments with current GPG keys."
+  echo -e "  - Example: ${BOLD}$SCRIPT encrypt_secrets ${NORM}"
+  echo -e "${REV}generate_module${NORM} Generates a module based on the Terraform provider and resource provided."
   echo -e "  - Argument must be in the form of 'provider_resource'."
-  echo -e "  - Example: ${BOLD}$SCRIPT -m aws_alb ${NORM}"
-  echo -e "${REV}-r${NORM} Re-encrypts secret variable files in all environments with current GPG keys."
-  echo -e "  - Example: ${BOLD}$SCRIPT -r ${NORM}"
-  echo -e "${REV}-s${NORM} Generates a basic Terrafirm directory structure based on the directory you are currently in."
-  echo -e "  - Example: ${BOLD}$SCRIPT -s ${NORM}"
-  echo -e "${REV}-v${NORM} Generates a Terraform variable file based on the Terrafirm module path provided."
+  echo -e "  - Example: ${BOLD}$SCRIPT generate_module aws_alb ${NORM}"
+  echo -e "${REV}generate_structure${NORM} Generates a basic Terrafirm directory structure based on the directory you are currently in."
+  echo -e "  - Example: ${BOLD}$SCRIPT generate_structure ${NORM}"
+  echo -e "${REV}generate_variables${NORM} Generates a Terraform variable file based on the Terrafirm module path provided."
   echo -e "  - Ignores files with the name 'variables.tf','outputs.tf', and files with the '.tfvars' extension."
-  echo -e "  - Example: ${BOLD}$SCRIPT -v my_custom_modules/vpc ${NORM}"
+  echo -e "  - Example: ${BOLD}$SCRIPT generate_variables my_custom_modules/vpc ${NORM}"
+  echo -e "${REV}view_secrets${NORM} View the secret variable file contents for the environment specified."
+  echo -e "  - Example: ${BOLD}$SCRIPT view_secrets dev ${NORM}"
   exit 1
 }
 
-# Terrafirm Helper Functions
-function edit_secret {
+## Terrafirm Helper Functions
+function edit_secrets {
   secret_file="variables/environments/${1}/secret.tfvars"
   if [ ! -e "${secret_file}.encrypted" ]; then
     if [ ! -e "${secret_file}" ]; then
@@ -58,44 +60,30 @@ function edit_secret {
   exit
 }
 
-function generate_structure {
-  mkdir -p configs
-  mkdir -p modules
-  mkdir -p variables/environments
-  mkdir -p terrafirm_files/public_keys
-  tee "terrafirm_files/terrafirm_variables.sh" <<EOF > /dev/null
-#!/usr/bin/env bash
-project_name="terrafirm"
-s3_bucket="terraform-states"
-s3_bucket_region="us-east-1"
-my_environments=( )
-aws_profile="default"
-aws_creds_file="\$HOME/.aws/credentials"
-EOF
-  echo -e "${BOLD}Notice:${NORM} Generated Terrafirm directory structure at ${PWD}"
-  exit
-}
-
-function generate_variables {
-  cd modules/$1 || help
-  files=`ls | grep -v variables | grep -v outputs | grep -v .tfvars`
-  cat $files | grep '${var.' | sed 's/.*${var./var./g;s/}.*//g;s/ [!@#\$%^&*()].*//g' | sort | uniq | sed 's/var./variable "/g;s/$/" {}/g' >> generated_variables.tfvars
-  echo -e "${BOLD}Notice:${NORM} Module variable file generated at ${PWD}/generated_variables.tf"
+function encrypt_secrets {
+  secret_files=`find variables/environments -type f -name "*.encrypted" | sed 's/.encrypted//'`
+  if [ "${secret_files}" == "" ]; then
+    echo "There doesn't appear to be any secret files in '${PWD}/variables/environments'"
+    exit 1
+  fi
+  while read -r secret; do
+    decrypt ${secret}
+    encrypt ${secret}
+    echo "Encrypted '${secret}' with keys located in '${PWD}/terrafirm_files/public_keys/'"
+  done <<< "${secret_files}"
   exit
 }
 
 function generate_module {
   provider=`echo $1 | sed 's/_.*//'`
   resource=`echo $1 | sed 's/^[^_]*_//'`
-  new_dir="modules/terrafirm_generated_${provider}_${resource}"
   url="https://www.terraform.io/docs/providers/${provider}/r/${resource}.html"
   page=`curl -s ${url}`
   variables=`echo -e "${page}" | sed '1,/<p>The following arguments are supported/d;/<h2 id="attributes-reference">/,$d' | grep '<a name=' | sed 's/.*"><code>//;s/<\/code><\/a>//;s/<code>//g;s/<\/code>//g'`
   outputs=`echo -e "${page}" | sed '1,/<p>The following attributes are exported/d;/<h2/,$d' | grep '<a name=' | sed 's/.*"><code>//;s/<\/code><\/a>//;s/<code>//g;s/<\/code>//g' | sed 's/^/output "/;s/ [-=] /" {  description = "/;s/$/"}/'`
 
-  mkdir -p $new_dir || exit
-  cd $new_dir || exit
-  echo -e "# Module Resource"
+  echo -e "${REV}Notice:${NORM} Generating module from ${url}"
+  echo -e \\n"# Module Resource"
   echo -e "resource \"$1\" \"$1\" {"
   while read -r var; do
     short_var=`echo -e "${var}" | sed 's/ [-=] .*//' | tr -d '\n'`
@@ -114,17 +102,46 @@ function generate_module {
   exit
 }
 
-function sign {
-  secret_files=`find variables/environments -type f -name "*.encrypted" | sed 's/.encrypted//'`
-  if [ "${secret_files}" == "" ]; then
-    echo "There doesn't appear to be any secret files in '${PWD}/variables/environments'"
-    exit 1
+function generate_structure {
+  mkdir -p configs
+  mkdir -p modules
+  mkdir -p variables/environments
+  mkdir -p terrafirm_files/public_keys
+  tee "terrafirm_files/terrafirm_variables.sh" <<EOF > /dev/null
+#!/usr/bin/env bash
+project_name="terrafirm"
+s3_bucket="terraform-states"
+s3_bucket_region="us-east-1"
+my_environments=( )
+aws_profile="default"
+aws_creds_file="\$HOME/.aws/credentials"
+EOF
+  echo -e "${REV}Notice:${NORM} Generated Terrafirm directory structure at ${PWD}"
+  exit
+}
+
+function generate_variables {
+  cd modules/$1 || help
+  files=`ls | grep -v variables | grep -v outputs | grep -v .tfvars`
+  cat $files | grep '${var.' | sed 's/.*${var./var./g;s/}.*//g;s/ [!@#\$%^&*()].*//g' | sort | uniq | sed 's/var./variable "/g;s/$/" {}/g' >> generated_variables.tfvars
+  echo -e "${REV}Notice:${NORM} Module variable file generated at ${PWD}/generated_variables.tf"
+  exit
+}
+
+function view_secrets {
+  secret_file="variables/environments/${1}/secret.tfvars"
+  if [ ! -e "${secret_file}.encrypted" ]; then
+    if [ ! -e "${secret_file}" ]; then
+      if [ ! -d "variables/environments/${1}" ]; then
+        echo "There doesn't appear to be an environment folder at 'variables/environments/${1}' Terrafirm to access."
+        exit 1
+      else
+        echo "Encrypted secret file for the ${1} environment not found."
+      fi
+    fi
+  else
+    gpg --batch --yes -q --output - --decrypt "${secret_file}.encrypted"
   fi
-  while read -r secret; do
-    decrypt ${secret}
-    encrypt ${secret}
-    echo "Encrypted '${secret}' with keys located in '${PWD}/terrafirm_files/public_keys/'"
-  done <<< "${secret_files}"
   exit
 }
 
@@ -146,36 +163,18 @@ function import_keys {
   gpg --batch --yes -q --import ${PWD}/terrafirm_files/public_keys/*
 }
 
-# Interpret options if supplied
-while getopts "f:hm:rsv:" opt; do
-  case "$opt" in
-  f)
-      edit_secret "$OPTARG"
-      ;;
-  m)
-      generate_module "$OPTARG"
-      ;;
-  r)
-      sign
-      ;;
-  s)
-      generate_structure
-      ;;
-  v)
-      generate_variables "$OPTARG"
-      ;;
-  h)
-      help
-      ;;
-  \?)
-      help
-      ;;
-  esac
-  exit
-done
-shift $((OPTIND-1))
+## Terrafirm Helper
+valid_terrafirm_actions=( generate_module generate_structure generate_variables view_secrets edit_secrets encrypt_secrets help )
+terrafirm_action=$1
+terrafirm_arg=$2
 
-# Gather and validate arguments
+# If the first argument is recognized as a valid Terrafirm action, execute it 
+if [[ " ${valid_terrafirm_actions[*]} " = *" ${terrafirm_action} "* ]]; then
+  ${terrafirm_action} ${terrafirm_arg}
+  exit
+fi
+
+## Terrafirm Wrapper
 environment=$1
 config=$2
 tf_cmd=$3
@@ -226,7 +225,9 @@ fi
 rm -rf .terraform/
 
 # Initialize the Terrafirm remote state and gather modules
-terraform init -input=false -get=true -backend=true -backend-config="key=${environment}/${config}/terrafirm.tfstate'" -backend-config="bucket=${s3_bucket}" -backend-config="region=${s3_bucket_region}" -backend-config="profile=${aws_profile}" -backend-config="shared_credentials_file=${aws_creds_file}"
+terraform init -input=false -get=true -backend=true -backend-config="key=${environment}/${config}/terrafirm.tfstate'" \
+-backend-config="bucket=${s3_bucket}" -backend-config="region=${s3_bucket_region}" \
+-backend-config="profile=${aws_profile}" -backend-config="shared_credentials_file=${aws_creds_file}"
 
 # Decrypt secrets if necessary and gather variable files
 variable_files=""
@@ -238,16 +239,22 @@ done
 
 if [ -e "../../variables/environments/${environment}/secret.tfvars.encrypted" ]; then
   cd ../../ >/dev/null 2>&1
-  decrypt "variables/environments/${environment}/secret.tfvars"
-  variable_files=$variable_files" -var-file ../../variables/environments/${environment}/secret.tfvars"
+  cp "variables/environments/${environment}/secret.tfvars.encrypted" "variables/environments/${environment}/secret.tfvars.copy.encrypted"
+  decrypt "variables/environments/${environment}/secret.tfvars.copy"
+  variable_files=$variable_files" -var-file ../../variables/environments/${environment}/secret.tfvars.copy"
   cd - >/dev/null 2>&1
 fi
 
 # Run the Terraform command specified
 terraform ${tf_cmd} ${variable_files} ${extra_tf_args}
 
+if [ -e "../../variables/environments/${environment}/secret.tfvars.copy" ]; then
+  rm "../../variables/environments/${environment}/secret.tfvars.copy"
+  rm "../../variables/environments/${environment}/secret.tfvars.copy.encrypted"
+fi
+
 # Re-encrypt secrets if variable file exists
-if [ -e "../../variables/environments/${environment}/secret.tfvars" ] ; then
+if [ -e "../../variables/environments/${environment}/secret.tfvars" ]; then
   cd ../../ >/dev/null 2>&1
   encrypt "variables/environments/${environment}/secret.tfvars"
 fi
