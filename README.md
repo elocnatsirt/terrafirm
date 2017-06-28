@@ -57,7 +57,7 @@ The wrapper assumes a few things:
 ### Terrafirm Helpers
 **Usage**
 ```
-./terrafirm -(terrafirm_helper_option) (args)
+./terrafirm (terrafirm_helper) (args)
 ```
 
 **NOTE**
@@ -84,7 +84,7 @@ basic structure in your project:
 See this project's structure for a more detailed layout.
 
 ### Secret Variables File Editor (edit_secrets)
-Working with secrets in Terrafirm requires you to have a file named ```secret.tfvars(.encrypted)```` 
+Working with secrets in Terrafirm requires you to have a file named ```secret.tfvars(.encrypted)``` 
 in your environment variables folder. If this file is present, Terrafirm will 
 automatically decrypt it at runtime and then re-encrypt it after Terraform finishes 
 running.
@@ -92,7 +92,8 @@ running.
 You can create this encrypted file in one of two ways: by calling this helper and 
 letting it create this file for you (you will have a chance to edit it as well) 
 or creating a ```variables/environments/(env)/secret.tfvars``` file with your 
-secrets and running Terrafirm as you would normally.
+secrets and running Terrafirm as you would normally. The secret file will be 
+encrypted at next runtime.
 
 **NOTE** This is a variables file by nature. It has not been tested with any 
 other Terraform specific configuration. However, you could in theory include 
@@ -105,7 +106,7 @@ show as uncommited even if you have not changed the content. If you just want to
 view your secrets, use the ```view_secrets``` helper instead.
 
 ### Secret Variables File Viewer (view_secrets)
-Prints out the contents of the secret variables file to STDOUT for the environment 
+Prints out the contents of the secret variables file to ```stdout``` for the environment 
 specified. This will allow you to see your current secrets without causing git to 
 detect any changes.
 
