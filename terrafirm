@@ -198,8 +198,8 @@ if [ "${PWD##*/}" != "${project_name}" ]; then
 fi
 
 # Check the environment argument to see if it calls a real environment.
-if [[ " ${my_environments[*]} " != *" ${environment} "* ]]; then
-  echo "You need to specify a real environment."
+if [ ! -d "variables/environments/${environment}" ]; then
+  echo "${environment} does not appear to be a real environment. To add an environment, create a folder with the environment name under 'variables/environments/' and add the necessary variables."
   exit 1
 fi
 
@@ -213,12 +213,6 @@ else
     exit 1
   fi
   cd configs/${config}
-fi
-
-# Validate the Terraform configuration before running
-if ! terraform validate; then
-  echo "${REV}Fix the validation errors above, then re-run this script.${NORM}"
-  exit 1
 fi
 
 # Remove local .terraform directory before running to prevent environment conflicts
@@ -243,6 +237,14 @@ if [ -e "../../variables/environments/${environment}/secret.tfvars.encrypted" ];
   decrypt "variables/environments/${environment}/secret.tfvars.copy"
   variable_files=$variable_files" -var-file ../../variables/environments/${environment}/secret.tfvars.copy"
   cd - >/dev/null 2>&1
+fi
+
+# Validate the Terraform configuration before running
+terraform validate ${variable_files}
+
+if [ $? -eq 1 ]; then
+  echo -e \\n"${REV}ERROR:${NORM} Fix the validation errors above, then re-run this script.${NORM}"
+  exit 1
 fi
 
 # Run the Terraform command specified
