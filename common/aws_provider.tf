@@ -1,6 +1,10 @@
 # NOTE: This file is symlinked to configurations!
 # Changing this will affect everything using an S3 remote state
 
+variable "common" {
+  type = "map"
+}
+
 variable "aws" {
   type    = "map"
   default = {

@@ -1,0 +1,1 @@
+../../common/aws_provider.tf

@@ -78,11 +78,18 @@ function run_terraform {
 
   # Gather variable files
   variable_files=""
-  for filename in "../../variables/environments/${environment}/*.tfvars"; do
-    for file in $filename; do
-      variable_files=$variable_files" -var-file $file"
+  common_vars="../../variables/common.tfvars"
+  if [ -e $common_vars ]; then
+    variable_files="-var-file $common_vars"
+  fi
+  files=`ls -1 ../../variables/environments/${environment}/*.tfvars 2>/dev/null | wc -l`
+  if [ $files != 0 ]; then
+    for filename in "../../variables/environments/${environment}/*.tfvars"; do
+      for file in $filename; do
+        variable_files=$variable_files" -var-file $file"
+      done
     done
-  done
+  fi
 
   # Validate the Terraform configuration before running
   terraform validate ${variable_files}
